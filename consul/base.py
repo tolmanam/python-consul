@@ -220,40 +220,39 @@ class CB(object):
         *is_id* only the 'ID' field of the json object will be returned.
         """
         def cb(response):
-            CB._status(response, allow_404=allow_404)
-            if response.code == 404:
-                return response.headers['X-Consul-Index'], None
+            CB.__status(response, allow_404=allow_404)
+            data = None
+            if response.code in [200]:
+                data = json.loads(response.body)
 
-            data = json.loads(response.body)
-
-            if decode:
-                for item in data:
-                    if item.get(decode) is not None:
-                        item[decode] = base64.b64decode(item[decode])
-            if is_id:
-                data = data['ID']
-            if one:
-                if data == []:
-                    data = None
-                if data is not None:
-                    data = data[0]
-            if map:
-                data = map(data)
+                if decode:
+                    for item in data:
+                        if item.get(decode) is not None:
+                            item[decode] = base64.b64decode(item[decode])
+                if is_id:
+                    data = data['ID']
+                if one:
+                    if data == []:
+                        data = None
+                    if data is not None:
+                        data = data[0]
+                if map:
+                    data = map(data)
             if index:
-                return response.headers['X-Consul-Index'], data
+                return response.headers['X-Nomad-Index'], data
             return data
         return cb
 
-
 class HTTPClient(six.with_metaclass(abc.ABCMeta, object)):
     def __init__(self, host='127.0.0.1', port=8500, scheme='http',
-                 verify=True, cert=None):
+                 verify=True, cert=None, token=None):
         self.host = host
         self.port = port
         self.scheme = scheme
         self.verify = verify
         self.base_uri = '%s://%s:%s' % (self.scheme, self.host, self.port)
         self.cert = cert
+        self.token = token
 
     def uri(self, path, params=None):
         uri = self.base_uri + urllib.parse.quote(path, safe='/:')
@@ -343,6 +342,9 @@ class Consul(object):
         self.query = Consul.Query(self)
         self.coordinate = Consul.Coordinate(self)
         self.operator = Consul.Operator(self)
+
+    def connect(self, host, port, scheme, verify, cert, token):
+        pass
 
     class Event(object):
         """
